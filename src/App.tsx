@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react'
 import { Layout } from './components/Layout'
 import { ForecastingChart } from './components/ForecastingChart'
 import { AIInsights } from './components/AIInsights'
+import { Auth } from './components/Auth'
 import { TrendingUp, DollarSign, Activity, Loader2, BrainCircuit, Sparkles, Pencil, Trash2, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { groq } from './lib/groq'
 import { supabase } from './lib/supabase'
 import type { Transaction, MonthlyData } from './types'
+import type { User } from '@supabase/supabase-js'
 import './App.css'
 
 const formatIDR = (amount: number) => {
@@ -17,6 +19,9 @@ const formatIDR = (amount: number) => {
 };
 
 function App() {
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -42,34 +47,50 @@ function App() {
   const [description, setDescription] = useState('');
 
   useEffect(() => {
-    fetchData();
-  }, [currentPage]);
+    // Auth Listener
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setAuthLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetchData();
+    }
+  }, [user, currentPage]);
 
   const fetchData = async () => {
+    if (!user) return;
     try {
       setLoading(true);
       
-      // Get total count for pagination
       const { count, error: countError } = await supabase
         .from('transactions')
-        .select('*', { count: 'exact', head: true });
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
       
       if (!countError) setTotalCount(count || 0);
 
-      // Fetch paginated transactions
       const from = (currentPage - 1) * itemsPerPage;
       const to = from + itemsPerPage - 1;
 
       const { data: transData, error: transError } = await supabase
         .from('transactions')
         .select('*')
+        .eq('user_id', user.id)
         .order('transaction_date', { ascending: false })
         .range(from, to);
 
       if (transError) throw transError;
       setTransactions(transData || []);
 
-      // Calculate monthly stats (Income vs Expense for current month)
       const now = new Date();
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
       const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
@@ -77,6 +98,7 @@ function App() {
       const { data: currentStats, error: statsError } = await supabase
         .from('transactions')
         .select('type, amount')
+        .eq('user_id', user.id)
         .gte('transaction_date', firstDay)
         .lte('transaction_date', lastDay);
 
@@ -90,7 +112,7 @@ function App() {
       }
 
       const { data: mData, error: mError } = await supabase
-        .from('monthly_revenue')
+        .from('monthly_revenue_user')
         .select('*');
 
       if (!mError && mData) {
@@ -107,7 +129,7 @@ function App() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!amount || !description) return;
+    if (!user || !amount || !description) return;
 
     try {
       setSubmitting(true);
@@ -118,6 +140,7 @@ function App() {
             type, 
             amount: parseFloat(amount), 
             description,
+            user_id: user.id,
             transaction_date: new Date().toISOString().split('T')[0]
           }
         ]);
@@ -136,7 +159,7 @@ function App() {
 
   const handleAiQuickEntry = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!aiPrompt.trim()) return;
+    if (!user || !aiPrompt.trim()) return;
 
     try {
       setIsAiProcessing(true);
@@ -144,7 +167,7 @@ function App() {
         messages: [
           {
             role: 'system',
-            content: `You are a financial transaction extractor. Extract details and return ONLY a JSON object: {"type": "income" | "expense", "amount": number, "description": string}.`
+            content: `Extract details and return JSON: {"type": "income" | "expense", "amount": number, "description": string}.`
           },
           { role: 'user', content: aiPrompt }
         ],
@@ -153,12 +176,7 @@ function App() {
       });
 
       const result = JSON.parse(response.choices[0]?.message?.content || '{}');
-      if (result.error) {
-        alert("AI tidak dapat mengenali rincian tersebut.");
-        return;
-      }
-
-      await supabase.from('transactions').insert([{ ...result, transaction_date: new Date().toISOString().split('T')[0] }]);
+      await supabase.from('transactions').insert([{ ...result, user_id: user.id, transaction_date: new Date().toISOString().split('T')[0] }]);
       setAiPrompt('');
       fetchData();
     } catch (error) {
@@ -170,7 +188,7 @@ function App() {
 
   const handleAiEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingTransaction || !aiEditPrompt.trim()) return;
+    if (!user || !editingTransaction || !aiEditPrompt.trim()) return;
 
     try {
       setIsAiEditing(true);
@@ -187,7 +205,7 @@ function App() {
       });
 
       const updatedData = JSON.parse(response.choices[0]?.message?.content || '{}');
-      await supabase.from('transactions').update(updatedData).eq('id', editingTransaction.id);
+      await supabase.from('transactions').update(updatedData).eq('id', editingTransaction.id).eq('user_id', user.id);
       setEditingTransaction(null);
       setAiEditPrompt('');
       fetchData();
@@ -199,15 +217,27 @@ function App() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Hapus transaksi ini?')) return;
-    await supabase.from('transactions').delete().eq('id', id);
+    if (!user || !confirm('Hapus transaksi ini?')) return;
+    await supabase.from('transactions').delete().eq('id', id).eq('user_id', user.id);
     fetchData();
   };
 
   const totalBalance = monthlyData.reduce((acc, curr) => acc + (curr.actual || 0), 0);
 
+  if (authLoading) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--background)' }}>
+        <Loader2 className="animate-spin" size={48} color="var(--primary)" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Auth />;
+  }
+
   return (
-    <Layout>
+    <Layout userEmail={user.email}>
       <div className="dashboard-grid">
         <div className="glass-panel" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div style={{ padding: '0.75rem', borderRadius: '0.75rem', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--primary)' }}>
@@ -329,11 +359,10 @@ function App() {
               </table>
             </div>
 
-            {/* Pagination Controls */}
             {totalCount > itemsPerPage && (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', padding: '0 1rem' }}>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                  Menampilkan {Math.min(totalCount, (currentPage - 1) * itemsPerPage + 1)} - {Math.min(totalCount, currentPage * itemsPerPage)} dari {totalCount} transaksi
+                  Hal {currentPage} dari {Math.ceil(totalCount / itemsPerPage)}
                 </p>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <button 
@@ -343,9 +372,6 @@ function App() {
                   >
                     <ChevronLeft size={18} />
                   </button>
-                  <div style={{ display: 'flex', alignItems: 'center', padding: '0 0.5rem', color: 'var(--primary)', fontWeight: 600 }}>
-                    {currentPage} / {Math.ceil(totalCount / itemsPerPage)}
-                  </div>
                   <button 
                     onClick={() => setCurrentPage(p => Math.min(Math.ceil(totalCount / itemsPerPage), p + 1))}
                     disabled={currentPage >= Math.ceil(totalCount / itemsPerPage)}
@@ -370,7 +396,7 @@ function App() {
             <textarea 
               value={aiEditPrompt} 
               onChange={(e) => setAiEditPrompt(e.target.value)} 
-              placeholder="Contoh: 'Ubah nominalnya jadi 100 ribu'..." 
+              placeholder="Apa yang ingin diubah?..." 
               style={{ width: '100%', background: '#0f172a', border: '1px solid var(--border)', padding: '1rem', color: 'white', minHeight: '100px' }}
             />
             <button onClick={handleAiEdit} disabled={isAiEditing} style={{ width: '100%', marginTop: '1rem' }}>

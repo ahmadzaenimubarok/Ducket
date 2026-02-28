@@ -17,7 +17,7 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ data }) => {
         messages: [
           {
             role: 'system',
-            content: 'You are a professional financial analyst AI. Analyze the provided data in Indonesian Rupiah (IDR) and give a concise forecasting insight in Indonesian language. Include potential risks and opportunities. Keep it under 100 words.'
+            content: 'You are a professional financial analyst AI. Analyze the provided data in Indonesian Rupiah (IDR) but provide your analysis in English. Include potential risks and opportunities. Keep it under 100 words.'
           },
           {
             role: 'user',

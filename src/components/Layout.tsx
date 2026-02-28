@@ -47,7 +47,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, userEmail }) => {
                 }}
               >
                 <LogOut size={14} />
-                Keluar
+                Logout
               </button>
             </div>
           )}

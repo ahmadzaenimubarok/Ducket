@@ -4,8 +4,8 @@ import { BrainCircuit, Loader2, Sparkles } from 'lucide-react';
 
 export const Auth: React.FC = () => {
   const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('demo@email.com');
+  const [password, setPassword] = useState('password');
   const [isRegister, setIsRegister] = useState(false);
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -15,7 +15,7 @@ export const Auth: React.FC = () => {
       if (isRegister) {
         const { error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
-        alert('Cek email kamu untuk verifikasi pendaftaran!');
+        alert('Check your email for verification!');
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -38,7 +38,7 @@ export const Auth: React.FC = () => {
     }}>
       <div className="glass-panel" style={{ width: '100%', maxWidth: '400px', textAlign: 'center' }}>
         <div style={{ marginBottom: '2rem' }}>
-          <BrainCircuit className="gradient-text" size={48} style={{ margin: '0 auto 1rem auo' }} />
+          <BrainCircuit className="gradient-text" size={48} style={{ margin: '0 auto 1rem auto' }} />
           <h1 className="gradient-text" style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>Ducket</h1>
           <p style={{ color: 'var(--text-muted)' }}>Sign in to manage your smart finance</p>
         </div>

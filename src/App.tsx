@@ -47,7 +47,6 @@ function App() {
   const [description, setDescription] = useState('');
 
   useEffect(() => {
-    // Auth Listener
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       setAuthLoading(false);
@@ -151,7 +150,7 @@ function App() {
       fetchData();
     } catch (error) {
       console.error('Error saving transaction:', error);
-      alert('Gagal menyimpan transaksi.');
+      alert('Failed to save transaction.');
     } finally {
       setSubmitting(false);
     }
@@ -217,7 +216,7 @@ function App() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!user || !confirm('Hapus transaksi ini?')) return;
+    if (!user || !confirm('Delete this transaction?')) return;
     await supabase.from('transactions').delete().eq('id', id).eq('user_id', user.id);
     fetchData();
   };
@@ -244,7 +243,7 @@ function App() {
             <DollarSign size={24} />
           </div>
           <div>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Total Saldo</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Total Balance</p>
             <h3 style={{ fontSize: '1.5rem' }}>{loading ? '...' : formatIDR(totalBalance)}</h3>
           </div>
         </div>
@@ -254,7 +253,7 @@ function App() {
             <TrendingUp size={24} />
           </div>
           <div>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Pemasukan (Bulan Ini)</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Income (This Month)</p>
             <h3 style={{ fontSize: '1.5rem', color: 'var(--success)' }}>{loading ? '...' : formatIDR(currentMonthStats.income)}</h3>
           </div>
         </div>
@@ -264,7 +263,7 @@ function App() {
             <TrendingUp size={24} style={{ transform: 'rotate(180deg)' }} />
           </div>
           <div>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Pengeluaran (Bulan Ini)</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Expenses (This Month)</p>
             <h3 style={{ fontSize: '1.5rem', color: 'var(--secondary)' }}>{loading ? '...' : formatIDR(currentMonthStats.expense)}</h3>
           </div>
         </div>
@@ -274,7 +273,7 @@ function App() {
             <Activity size={24} />
           </div>
           <div>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Status Sync</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Sync Status</p>
             <h3 style={{ fontSize: '1.5rem' }}>{loading ? 'Syncing...' : 'Live'}</h3>
           </div>
         </div>
@@ -283,18 +282,18 @@ function App() {
           <div className="glass-panel" style={{ border: '2px dashed var(--primary)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
               <BrainCircuit className="gradient-text" size={28} />
-              <h3 style={{ margin: 0 }}>AI Quick Entry (Input Cerdas)</h3>
+              <h3 style={{ margin: 0 }}>AI Quick Entry (Smart Input)</h3>
             </div>
             <form onSubmit={handleAiQuickEntry} style={{ display: 'flex', gap: '1rem' }}>
               <input 
                 type="text" 
                 value={aiPrompt}
                 onChange={(e) => setAiPrompt(e.target.value)}
-                placeholder="Contoh: 'Tadi makan siang habis 35 ribu'..."
+                placeholder="Example: 'Lunch 35k' or 'Salary 5m'..."
                 style={{ flex: 1, background: '#0f172a', border: '1px solid var(--border)', padding: '1rem', borderRadius: '0.6rem', color: 'white' }}
               />
               <button type="submit" disabled={isAiProcessing} style={{ minWidth: '180px' }}>
-                {isAiProcessing ? <Loader2 className="animate-spin" size={20} /> : <Sparkles size={20} />} Catat AI
+                {isAiProcessing ? <Loader2 className="animate-spin" size={20} /> : <Sparkles size={20} />} AI Entry
               </button>
             </form>
           </div>
@@ -306,43 +305,43 @@ function App() {
               <Loader2 className="animate-spin" size={40} />
             </div>
           ) : (
-            <ForecastingChart data={monthlyData} title="Analisis Pemasukan & Pengeluaran" />
+            <ForecastingChart data={monthlyData} title="Income & Expense Analysis" />
           )}
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', gridColumn: '1 / -1' }}>
           <AIInsights data={monthlyData} />
           <div className="glass-panel">
-            <h3>Catat Manual</h3>
+            <h3>Manual Entry</h3>
             <form style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }} onSubmit={handleSubmit}>
               <select value={type} onChange={(e) => setType(e.target.value as 'income' | 'expense')} style={{ width: '100%', background: '#0f172a', border: '1px solid var(--border)', padding: '0.5rem', color: 'white' }}>
-                <option value="income">Pemasukan</option>
-                <option value="expense">Pengeluaran</option>
+                <option value="income">Income</option>
+                <option value="expense">Expense</option>
               </select>
-              <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Nominal" required style={{ width: '100%', background: '#0f172a', border: '1px solid var(--border)', padding: '0.5rem', color: 'white' }} />
-              <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Keterangan" required style={{ width: '100%', background: '#0f172a', border: '1px solid var(--border)', padding: '0.5rem', color: 'white' }} />
-              <button type="submit" disabled={submitting}>{submitting ? '...' : 'Simpan'}</button>
+              <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Amount" required style={{ width: '100%', background: '#0f172a', border: '1px solid var(--border)', padding: '0.5rem', color: 'white' }} />
+              <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description" required style={{ width: '100%', background: '#0f172a', border: '1px solid var(--border)', padding: '0.5rem', color: 'white' }} />
+              <button type="submit" disabled={submitting}>{submitting ? '...' : 'Save'}</button>
             </form>
           </div>
         </div>
 
         <div className="full-width">
           <div className="glass-panel">
-            <h3 style={{ marginBottom: '1.5rem' }}>Mutasi Keuangan</h3>
+            <h3 style={{ marginBottom: '1.5rem' }}>Transaction History</h3>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                 <thead>
                   <tr style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>
-                    <th style={{ padding: '1rem' }}>Tanggal</th>
-                    <th style={{ padding: '1rem' }}>Keterangan</th>
-                    <th style={{ padding: '1rem' }}>Nominal</th>
-                    <th style={{ padding: '1rem', textAlign: 'right' }}>Aksi</th>
+                    <th style={{ padding: '1rem' }}>Date</th>
+                    <th style={{ padding: '1rem' }}>Description</th>
+                    <th style={{ padding: '1rem' }}>Amount</th>
+                    <th style={{ padding: '1rem', textAlign: 'right' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {transactions.map((t) => (
                     <tr key={t.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '1rem' }}>{new Date(t.transaction_date).toLocaleDateString('id-ID')}</td>
+                      <td style={{ padding: '1rem' }}>{new Date(t.transaction_date).toLocaleDateString()}</td>
                       <td style={{ padding: '1rem' }}>{t.description}</td>
                       <td style={{ padding: '1rem', color: t.type === 'income' ? 'var(--success)' : 'var(--secondary)' }}>
                         {t.type === 'income' ? '+' : '-'} {formatIDR(t.amount)}
@@ -362,7 +361,7 @@ function App() {
             {totalCount > itemsPerPage && (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', padding: '0 1rem' }}>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                  Hal {currentPage} dari {Math.ceil(totalCount / itemsPerPage)}
+                  Page {currentPage} of {Math.ceil(totalCount / itemsPerPage)}
                 </p>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <button 
@@ -396,11 +395,11 @@ function App() {
             <textarea 
               value={aiEditPrompt} 
               onChange={(e) => setAiEditPrompt(e.target.value)} 
-              placeholder="Apa yang ingin diubah?..." 
+              placeholder="What do you want to change?..." 
               style={{ width: '100%', background: '#0f172a', border: '1px solid var(--border)', padding: '1rem', color: 'white', minHeight: '100px' }}
             />
             <button onClick={handleAiEdit} disabled={isAiEditing} style={{ width: '100%', marginTop: '1rem' }}>
-              {isAiEditing ? 'Proses...' : 'Update via AI'}
+              {isAiEditing ? 'Processing...' : 'Update via AI'}
             </button>
           </div>
         </div>

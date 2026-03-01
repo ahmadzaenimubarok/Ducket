@@ -3,7 +3,7 @@ import { Sparkles, Loader2, BrainCircuit } from 'lucide-react';
 import { groq } from '../lib/groq';
 
 interface AIInsightsProps {
-  data: any[];
+  data: any;
 }
 
 export const AIInsights: React.FC<AIInsightsProps> = ({ data }) => {
@@ -13,15 +13,24 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ data }) => {
   const generateInsight = async () => {
     setLoading(true);
     try {
+      const { budgets, history } = data;
+      const budgetContext = budgets && budgets.length > 0
+        ? `Current Monthly Budgets: ${budgets.map((b: any) => `${b.category}: IDR ${b.amount}`).join(', ')}.` 
+        : "No budgets set for this month.";
+
       const response = await groq.chat.completions.create({
         messages: [
           {
             role: 'system',
-            content: 'You are a professional financial analyst AI. Analyze the provided data in Indonesian Rupiah (IDR) but provide your analysis in English. Include potential risks and opportunities. Keep it under 100 words.'
+            content: `You are a professional financial analyst AI. 
+            Analyze the provided transaction history and budget context. 
+            Indonesian Rupiah (IDR) is used. 
+            If the user is over budget or close to it (80%+), give a warning and tips to save.
+            Provide analysis in English. Keep it under 100 words.`
           },
           {
             role: 'user',
-            content: `Analyze this revenue data for forecasting: ${JSON.stringify(data)}`
+            content: `${budgetContext} Transaction history: ${JSON.stringify(history)}`
           }
         ],
         model: 'llama-3.3-70b-versatile',

@@ -211,6 +211,22 @@ input:focus, select:focus, textarea:focus {
   }
 }
 
+/* Budget Progress Bar */
+.budget-bar-container {
+  width: 100%;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  overflow: hidden;
+  margin: 1rem 0;
+  border: 1px solid var(--border);
+}
+
+.budget-bar-fill {
+  height: 100%;
+  transition: width 0.5s ease-out, background 0.5s ease;
+}
+
 /* Animations */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
@@ -226,6 +242,8 @@ input:focus, select:focus, textarea:focus {
 .text-primary { color: var(--primary); }
 .text-secondary { color: var(--secondary); }
 .text-success { color: var(--success); }
+.text-warning { color: #f59e0b; }
+.text-danger { color: #ef4444; }
 
 .mt-1 { margin-top: 0.5rem; }
 .mt-2 { margin-top: 1rem; }
@@ -311,7 +329,7 @@ input:focus, select:focus, textarea:focus {
 .transaction-actions {
   display: flex;
   gap: 0.5rem;
-  opacity: 1; /* Keep visible on mobile, could be 0 and hover on desktop */
+  opacity: 1;
 }
 
 @media (min-width: 768px) {

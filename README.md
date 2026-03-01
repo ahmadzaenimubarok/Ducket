@@ -1,79 +1,74 @@
 # 🦆 Ducket - AI Smart Finance Tracker
 
-A premium forecasting dashboard built with **React**, **Vite**, **Supabase**, and **Groq AI**.
+A premium, intelligent financial forecasting dashboard built with **React**, **Vite**, **Supabase**, and **Groq AI**.
 
-## 🚀 Memulai (Getting Started)
+**Live Demo:** [https://ducketfinance.netlify.app/](https://ducketfinance.netlify.app/)
 
-1. **Install dependensi**:
-   ```bash
-   npm install
-   ```
-2. **Set up Environment Variables**:
-   Buat file `.env` di root dan isi dengan API Key kamu (lihat `.env.example`):
-   ```env
-   VITE_SUPABASE_URL=your_supabase_url
-   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-   VITE_GROQ_API_KEY=your_groq_api_key
-   ```
-3. **Database Setup**:
-   Jalankan file `supabase_setup.sql` di SQL Editor Supabase kamu. (Lihat bagian Database Setup di bawah).
-4. **Jalankan Aplikasi**:
-   ```bash
-   npm run dev
-   ```
+---
 
-## 🔐 Database Setup (PENTING)
+## ✨ Key Features
 
-Agar aplikasi **Ducket** berjalan dengan fitur multi-user yang aman, kamu **WAJIB** menjalankan script SQL di bawah ini di **Supabase SQL Editor** (ini akan menghapus tabel lama jika ada, jadi pastikan setup baru):
+- **🤖 AI Smart Input (Natural Language)**: Log transactions by simply typing (e.g., "Paid 50k for lunch yesterday").
+- **📝 AI-Powered Editor**: Edit your existing transactions by chatting with the AI.
+- **🛡️ Privacy Toggle**: Hide/Show your sensitive financial totals with a single click.
+- **📈 Intelligent Forecasting**: Get deep insights and trend analysis powered by Groq Llama 3.
+- **🔐 Secure Authentication**: Multi-user support with isolated data handling via Supabase Row Level Security (RLS).
+- **📱 Modern & Responsive**: A premium glassmorphism interface that looks stunning on mobile and desktop.
+- **📉 Financial Visualization**: Interactive charts for revenue and expense analysis.
 
-```sql
--- DUCKET DATABASE SETUP (Full Clean Install)
--- Jalankan script ini di SQL Editor Supabase
+---
 
-drop view if exists monthly_revenue_user;
-drop view if exists monthly_revenue;
-drop table if exists transactions;
+## 🚀 Getting Started
 
--- 1. Tabel Utama (Isolated per User)
-create table transactions (
-  id uuid default uuid_generate_v4() primary key,
-  user_id uuid references auth.users not null default auth.uid(),
-  type text check (type in ('income', 'expense')) not null,
-  amount decimal not null,
-  description text,
-  transaction_date date default now() not null,
-  created_at timestamp with time zone default now()
-);
+### 1. Prerequisite
+Ensure you have **Node.js** installed on your machine.
 
--- 2. Aktifkan RLS (Row Level Security)
-alter table transactions enable row level security;
-
--- 3. Policy Keamanan (User hanya akses miliknya)
-create policy "Users can manage their own transactions"
-  on transactions for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
-
--- 4. View Dashboard Grafik (Security Invoker)
-create view monthly_revenue_user 
-with (security_invoker = on)
-as
-select 
-  user_id,
-  to_char(transaction_date, 'Mon') as date,
-  sum(case when type = 'income' then amount else -amount end) as actual
-from transactions
-group by user_id, to_char(transaction_date, 'Mon'), date_trunc('month', transaction_date)
-order by date_trunc('month', transaction_date);
+### 2. Installations
+```bash
+git clone <your-repo-link>
+cd forecasting
+npm install
 ```
 
-## 🎯 Fitur Unggulan
-- **🤖 AI Quick Entry**: Catat pengeluaran hanya dengan mengetik kalimat bahasa manusia (Beli kopi 20rb).
-- **📝 AI Editor**: Ubah data transaksi kamu hanya dengan ngobrol ke AI di fitur mutasi.
-- **🔐 Multi-User Auth**: Login aman & data terpisah untuk setiap pengguna.
-- **📈 Forecasting Charts**: Prediksi keuangan berdasarkan pola historis.
-- **📱 Premium Design**: Antarmuka *glassmorphism* yang mewah dan responsif.
+### 3. Environment Variables
+Create a `.env` file in the root directory and add your keys (see `.env.example`):
+```env
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_GROQ_API_KEY=your_groq_api_key
+```
+
+### 4. Database Setup (Supplied SQL)
+To enable multi-user security and dashboard views, you **MUST** run the provided SQL script in your Supabase SQL Editor:
+- **File:** `supabase_setup.sql`
+- This script handles Table creation, RLS Policies, and the Dashboard Summary View.
+
+### 5. Run Development Server
+```bash
+npm run dev
+```
+
+---
+
+## 🛠️ Tech Stack
+
+- **Frontend:** React + Vite + TypeScript
+- **Styling:** Vanilla CSS (Glassmorphism & Flexbox/Grid)
+- **Backend/DB:** Supabase (Auth + PostgreSQL + RLS)
+- **AI Engine:** Groq SDK (Llama 3.3 70B Model)
+- **Icons & Charts:** Lucide-React & Recharts
+
+---
 
 ## 🌐 Deployment
-1. Jalankan `npm run build`.
-2. Upload folder `dist` ke Vercel, Netlify, atau Cloudflare Pages.
+
+1. Build the production bundle:
+   ```bash
+   npm run build
+   ```
+2. Deploy the `dist` folder to your preferred static hosting (Netlify, Vercel, or Cloudflare Pages).
+
+---
+
+## 📄 License
+© 2026 Ducket. All rights reserved.

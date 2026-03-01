@@ -38,17 +38,17 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ data }) => {
 
   return (
     <div className="glass-panel">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-        <BrainCircuit className="gradient-text" size={24} />
-        <h3 style={{ margin: 0 }}>AI Forecast Analysis</h3>
+      <div className="flex items-center gap-1 mb-2">
+        <BrainCircuit className="text-primary" size={24} />
+        <h3 style={{ fontSize: '1.1rem' }}>AI Forecast Analysis</h3>
       </div>
       
       {!insight && !loading && (
-        <div style={{ textAlign: 'center', padding: '2rem' }}>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+        <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
+          <p className="text-muted mb-2" style={{ fontSize: '0.9rem' }}>
             Get deep insights and trend analysis powered by Groq Llama 3.
           </p>
-          <button onClick={generateInsight} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 auto' }}>
+          <button onClick={generateInsight} className="mt-1" style={{ margin: '0 auto' }}>
             <Sparkles size={18} />
             Generate Insights
           </button>
@@ -56,20 +56,28 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ data }) => {
       )}
 
       {loading && (
-        <div style={{ textAlign: 'center', padding: '2rem' }}>
-          <Loader2 className="animate-spin" style={{ margin: '0 auto 1rem auto' }} />
-          <p>Analyzing trends...</p>
+        <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
+          <Loader2 className="animate-spin mb-1" style={{ margin: '0 auto' }} />
+          <p style={{ fontSize: '0.9rem' }}>Analyzing trends...</p>
         </div>
       )}
 
       {insight && (
         <div className="fade-in">
-          <p style={{ lineHeight: '1.6', color: 'var(--text)' }}>{insight}</p>
+          <p style={{ lineHeight: '1.6', color: 'var(--text)', fontSize: '0.95rem' }}>{insight}</p>
           <button 
             onClick={() => setInsight(null)} 
-            style={{ marginTop: '1.5rem', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)' }}
+            className="mt-2"
+            style={{ 
+              background: 'transparent', 
+              border: '1px solid var(--border)', 
+              color: 'var(--text-muted)',
+              padding: '0.5rem 1rem',
+              fontSize: '0.875rem',
+              width: 'auto'
+            }}
           >
-            Clear
+            Clear Analysis
           </button>
         </div>
       )}

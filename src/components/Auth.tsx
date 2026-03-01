@@ -34,72 +34,48 @@ export const Auth: React.FC = () => {
       alignItems: 'center',
       justifyContent: 'center',
       background: 'var(--background)',
-      padding: '2rem'
+      padding: '1rem'
     }}>
-      <div className="glass-panel" style={{ width: '100%', maxWidth: '400px', textAlign: 'center' }}>
+      <div className="glass-panel fade-in" style={{ width: '100%', maxWidth: '400px', textAlign: 'center' }}>
         <div style={{ marginBottom: '2rem' }}>
           <BrainCircuit className="gradient-text" size={48} style={{ margin: '0 auto 1rem auto' }} />
           <h1 className="gradient-text" style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>Ducket</h1>
-          <p style={{ color: 'var(--text-muted)' }}>Sign in to manage your smart finance</p>
+          <p className="text-muted">Sign in to manage your smart finance</p>
         </div>
 
         <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div style={{ textAlign: 'left' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Email Address</label>
+            <label className="mb-1 block" style={{ fontSize: '0.875rem' }}>Email Address</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="name@example.com"
               required
-              style={{
-                width: '100%',
-                background: '#0f172a',
-                border: '1px solid var(--border)',
-                padding: '0.75rem',
-                borderRadius: '0.5rem',
-                color: 'white'
-              }}
             />
           </div>
           <div style={{ textAlign: 'left' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Password</label>
+            <label className="mb-1 block" style={{ fontSize: '0.875rem' }}>Password</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               required
-              style={{
-                width: '100%',
-                background: '#0f172a',
-                border: '1px solid var(--border)',
-                padding: '0.75rem',
-                borderRadius: '0.5rem',
-                color: 'white'
-              }}
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.5rem',
-              marginTop: '0.5rem',
-              padding: '0.875rem'
-            }}
+            className="w-full mt-1"
           >
             {loading ? <Loader2 className="animate-spin" size={20} /> : <Sparkles size={20} />}
             {isRegister ? 'Create Account' : 'Sign In'}
           </button>
         </form>
 
-        <p style={{ marginTop: '1.5rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+        <p className="text-muted mt-2" style={{ fontSize: '0.875rem' }}>
           {isRegister ? 'Already have an account?' : "Don't have an account?"}{' '}
           <button
             onClick={() => setIsRegister(!isRegister)}
@@ -110,7 +86,9 @@ export const Auth: React.FC = () => {
               color: 'var(--primary)',
               textDecoration: 'underline',
               fontSize: 'inherit',
-              cursor: 'pointer'
+              cursor: 'pointer',
+              width: 'auto',
+              display: 'inline'
             }}
           >
             {isRegister ? 'Sign In' : 'Register Now'}

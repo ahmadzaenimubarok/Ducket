@@ -3,7 +3,7 @@ import { Layout } from './components/Layout'
 import { ForecastingChart } from './components/ForecastingChart'
 import { AIInsights } from './components/AIInsights'
 import { Auth } from './components/Auth'
-import { TrendingUp, DollarSign, Activity, Loader2, BrainCircuit, Sparkles, Pencil, Trash2, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { TrendingUp, DollarSign, Activity, Loader2, BrainCircuit, Sparkles, Pencil, Trash2, X, ChevronLeft, ChevronRight, Eye, EyeOff } from 'lucide-react'
 import { groq } from './lib/groq'
 import { supabase } from './lib/supabase'
 import type { Transaction, MonthlyData } from './types'
@@ -11,7 +11,7 @@ import type { User } from '@supabase/supabase-js'
 import './App.css'
 
 const formatIDR = (amount: number) => {
-  return new Intl.NumberFormat('id-ID', {
+  return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'IDR',
     minimumFractionDigits: 0,
@@ -21,6 +21,7 @@ const formatIDR = (amount: number) => {
 function App() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [isStatsVisible, setIsStatsVisible] = useState(false);
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -42,6 +43,7 @@ function App() {
   const [isAiEditing, setIsAiEditing] = useState(false);
 
   // Form State
+  const [isManualEntryOpen, setIsManualEntryOpen] = useState(false);
   const [type, setType] = useState<'income' | 'expense'>('income');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -85,6 +87,7 @@ function App() {
         .select('*')
         .eq('user_id', user.id)
         .order('transaction_date', { ascending: false })
+        .order('created_at', { ascending: false })
         .range(from, to);
 
       if (transError) throw transError;
@@ -147,6 +150,7 @@ function App() {
       if (error) throw error;
       setAmount('');
       setDescription('');
+      setIsManualEntryOpen(false); // Close modal after success
       fetchData();
     } catch (error) {
       console.error('Error saving transaction:', error);
@@ -166,7 +170,12 @@ function App() {
         messages: [
           {
             role: 'system',
-            content: `Extract details and return JSON: {"type": "income" | "expense", "amount": number, "description": string}.`
+            content: `Extract financial details from the prompt. 
+            RULES:
+            1. Return JSON: {"type": "income" | "expense", "amount": number, "description": string}.
+            2. "amount" MUST be a positive number. If not found, return 0.
+            3. "description" should be concise. If not found, return empty string.
+            4. If the prompt is not a financial transaction, return all fields as null/0.`
           },
           { role: 'user', content: aiPrompt }
         ],
@@ -175,11 +184,26 @@ function App() {
       });
 
       const result = JSON.parse(response.choices[0]?.message?.content || '{}');
-      await supabase.from('transactions').insert([{ ...result, user_id: user.id, transaction_date: new Date().toISOString().split('T')[0] }]);
+      
+      // FALLBACK VALIDATION
+      if (!result.amount || result.amount <= 0 || !result.description) {
+        alert('❌ AI failed to extract valid data. Please include a specific amount (e.g., "50k") and a clear description.');
+        return;
+      }
+
+      const { error } = await supabase.from('transactions').insert([{ 
+        ...result, 
+        user_id: user.id, 
+        transaction_date: new Date().toISOString().split('T')[0] 
+      }]);
+
+      if (error) throw error;
+      
       setAiPrompt('');
       fetchData();
     } catch (error) {
       console.error('AI Processing Error:', error);
+      alert('AI error occurred. Please try again with simple text like "Lunch 20k".');
     } finally {
       setIsAiProcessing(false);
     }
@@ -237,144 +261,191 @@ function App() {
 
   return (
     <Layout userEmail={user.email}>
+      <div className="flex justify-between items-center mb-1 flex-wrap gap-2">
+        <h2 style={{ fontSize: '1.25rem' }}>Dashboard Overview</h2>
+        <button 
+          onClick={() => setIsStatsVisible(!isStatsVisible)}
+          style={{ 
+            background: 'rgba(255, 255, 255, 0.05)', 
+            border: '1px solid var(--border)', 
+            padding: '0.4rem 0.8rem', 
+            fontSize: '0.85rem',
+            width: 'auto'
+          }}
+        >
+          {isStatsVisible ? <EyeOff size={16} /> : <Eye size={16} />}
+          {isStatsVisible ? 'Hide Values' : 'Show Values'}
+        </button>
+      </div>
+
       <div className="dashboard-grid">
-        <div className="glass-panel" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ padding: '0.75rem', borderRadius: '0.75rem', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--primary)' }}>
+        {/* Stats Section */}
+        <div className="glass-panel flex items-center gap-2">
+          <div style={{ padding: '0.75rem', borderRadius: '0.75rem', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--primary)', flexShrink: 0 }}>
             <DollarSign size={24} />
           </div>
-          <div>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Total Balance</p>
-            <h3 style={{ fontSize: '1.5rem' }}>{loading ? '...' : formatIDR(totalBalance)}</h3>
+          <div style={{ minWidth: 0 }}>
+            <p className="text-muted" style={{ fontSize: '0.875rem' }}>Total Balance</p>
+            <h3 style={{ fontSize: '1.25rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {loading ? '...' : (isStatsVisible ? formatIDR(totalBalance) : 'IDR ••••••')}
+            </h3>
           </div>
         </div>
 
-        <div className="glass-panel" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ padding: '0.75rem', borderRadius: '0.75rem', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--success)' }}>
+        <div className="glass-panel flex items-center gap-2">
+          <div style={{ padding: '0.75rem', borderRadius: '0.75rem', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--success)', flexShrink: 0 }}>
             <TrendingUp size={24} />
           </div>
-          <div>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Income (This Month)</p>
-            <h3 style={{ fontSize: '1.5rem', color: 'var(--success)' }}>{loading ? '...' : formatIDR(currentMonthStats.income)}</h3>
+          <div style={{ minWidth: 0 }}>
+            <p className="text-muted" style={{ fontSize: '0.875rem' }}>Income (Month)</p>
+            <h3 className="text-success" style={{ fontSize: '1.25rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {loading ? '...' : (isStatsVisible ? formatIDR(currentMonthStats.income) : 'IDR ••••••')}
+            </h3>
           </div>
         </div>
 
-        <div className="glass-panel" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ padding: '0.75rem', borderRadius: '0.75rem', background: 'rgba(236, 72, 153, 0.1)', color: 'var(--secondary)' }}>
+        <div className="glass-panel flex items-center gap-2">
+          <div style={{ padding: '0.75rem', borderRadius: '0.75rem', background: 'rgba(236, 72, 153, 0.1)', color: 'var(--secondary)', flexShrink: 0 }}>
             <TrendingUp size={24} style={{ transform: 'rotate(180deg)' }} />
           </div>
-          <div>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Expenses (This Month)</p>
-            <h3 style={{ fontSize: '1.5rem', color: 'var(--secondary)' }}>{loading ? '...' : formatIDR(currentMonthStats.expense)}</h3>
+          <div style={{ minWidth: 0 }}>
+            <p className="text-muted" style={{ fontSize: '0.875rem' }}>Expenses (Month)</p>
+            <h3 className="text-secondary" style={{ fontSize: '1.25rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {loading ? '...' : (isStatsVisible ? formatIDR(currentMonthStats.expense) : 'IDR ••••••')}
+            </h3>
           </div>
         </div>
 
-        <div className="glass-panel" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ padding: '0.75rem', borderRadius: '0.75rem', background: 'rgba(255, 255, 255, 0.05)', color: 'var(--text)' }}>
+        <div className="glass-panel flex items-center gap-2">
+          <div style={{ padding: '0.75rem', borderRadius: '0.75rem', background: 'rgba(255, 255, 255, 0.05)', color: 'var(--text)', flexShrink: 0 }}>
             <Activity size={24} />
           </div>
-          <div>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Sync Status</p>
-            <h3 style={{ fontSize: '1.5rem' }}>{loading ? 'Syncing...' : 'Live'}</h3>
+          <div style={{ minWidth: 0 }}>
+            <p className="text-muted" style={{ fontSize: '0.875rem' }}>Live Status</p>
+            <h3 style={{ fontSize: '1.25rem' }}>{loading ? 'Syncing' : 'Live'}</h3>
           </div>
         </div>
 
+        {/* AI Quick Entry */}
         <div className="full-width">
           <div className="glass-panel" style={{ border: '2px dashed var(--primary)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
-              <BrainCircuit className="gradient-text" size={28} />
-              <h3 style={{ margin: 0 }}>AI Quick Entry (Smart Input)</h3>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <BrainCircuit className="text-primary" size={24} />
+                <h3 style={{ fontSize: '1.1rem' }}>AI Smart Input</h3>
+              </div>
+              <button 
+                onClick={() => setIsManualEntryOpen(true)}
+                style={{ 
+                  background: 'rgba(255, 255, 255, 0.05)', 
+                  border: '1px solid var(--border)', 
+                  padding: '0.4rem 0.8rem', 
+                  fontSize: '0.75rem',
+                  width: 'auto'
+                }}
+              >
+                + Manual Entry
+              </button>
             </div>
-            <form onSubmit={handleAiQuickEntry} style={{ display: 'flex', gap: '1rem' }}>
-              <input 
-                type="text" 
+            <form onSubmit={handleAiQuickEntry} className="flex flex-col gap-2 w-full" style={{ width: '100%' }}>
+              <textarea 
                 value={aiPrompt}
                 onChange={(e) => setAiPrompt(e.target.value)}
                 placeholder="Example: 'Lunch 35k' or 'Salary 5m'..."
-                style={{ flex: 1, background: '#0f172a', border: '1px solid var(--border)', padding: '1rem', borderRadius: '0.6rem', color: 'white' }}
+                style={{ minHeight: '100px', width: '100%', resize: 'vertical' }}
               />
-              <button type="submit" disabled={isAiProcessing} style={{ minWidth: '180px' }}>
-                {isAiProcessing ? <Loader2 className="animate-spin" size={20} /> : <Sparkles size={20} />} AI Entry
+              <button 
+                type="submit" 
+                disabled={isAiProcessing} 
+                className="w-full" 
+                style={{ width: '100%' }}
+              >
+                {isAiProcessing ? <Loader2 className="animate-spin" size={20} /> : <Sparkles size={20} />} 
+                AI Entry
               </button>
             </form>
           </div>
         </div>
 
+        {/* Charts Section */}
         <div className="full-width">
           {loading ? (
-            <div className="glass-panel" style={{ height: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="glass-panel" style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Loader2 className="animate-spin" size={40} />
             </div>
           ) : (
-            <ForecastingChart data={monthlyData} title="Income & Expense Analysis" />
+            <ForecastingChart data={monthlyData} title="Financial Overview" />
           )}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', gridColumn: '1 / -1' }}>
+        {/* Features Split */}
+        <div className="full-width" style={{ minWidth: 0 }}>
           <AIInsights data={monthlyData} />
-          <div className="glass-panel">
-            <h3>Manual Entry</h3>
-            <form style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }} onSubmit={handleSubmit}>
-              <select value={type} onChange={(e) => setType(e.target.value as 'income' | 'expense')} style={{ width: '100%', background: '#0f172a', border: '1px solid var(--border)', padding: '0.5rem', color: 'white' }}>
-                <option value="income">Income</option>
-                <option value="expense">Expense</option>
-              </select>
-              <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Amount" required style={{ width: '100%', background: '#0f172a', border: '1px solid var(--border)', padding: '0.5rem', color: 'white' }} />
-              <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description" required style={{ width: '100%', background: '#0f172a', border: '1px solid var(--border)', padding: '0.5rem', color: 'white' }} />
-              <button type="submit" disabled={submitting}>{submitting ? '...' : 'Save'}</button>
-            </form>
-          </div>
         </div>
 
+        {/* History Section */}
         <div className="full-width">
           <div className="glass-panel">
-            <h3 style={{ marginBottom: '1.5rem' }}>Transaction History</h3>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                <thead>
-                  <tr style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>
-                    <th style={{ padding: '1rem' }}>Date</th>
-                    <th style={{ padding: '1rem' }}>Description</th>
-                    <th style={{ padding: '1rem' }}>Amount</th>
-                    <th style={{ padding: '1rem', textAlign: 'right' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {transactions.map((t) => (
-                    <tr key={t.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '1rem' }}>{new Date(t.transaction_date).toLocaleDateString()}</td>
-                      <td style={{ padding: '1rem' }}>{t.description}</td>
-                      <td style={{ padding: '1rem', color: t.type === 'income' ? 'var(--success)' : 'var(--secondary)' }}>
-                        {t.type === 'income' ? '+' : '-'} {formatIDR(t.amount)}
-                      </td>
-                      <td style={{ padding: '1rem', textAlign: 'right' }}>
-                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                          <button onClick={() => setEditingTransaction(t)} style={{ padding: '0.4rem', background: '#312e81' }}><Pencil size={14} /></button>
-                          <button onClick={() => handleDelete(t.id)} style={{ padding: '0.4rem', background: '#7f1d1d' }}><Trash2 size={14} /></button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <h3 className="mb-2">Recent Transactions</h3>
+            
+            <div className="transaction-list mt-2">
+              {transactions.map((t) => (
+                <div key={t.id} className="transaction-card fade-in">
+                  <div className="flex items-center" style={{ flex: 1, minWidth: 0 }}>
+                    <div className="transaction-icon" style={{ 
+                      background: t.type === 'income' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(236, 72, 153, 0.1)',
+                      color: t.type === 'income' ? 'var(--success)' : 'var(--secondary)'
+                    }}>
+                      {t.type === 'income' ? <TrendingUp size={20} /> : <TrendingUp size={20} style={{ transform: 'rotate(180deg)' }} />}
+                    </div>
+                    
+                    <div className="transaction-info">
+                      <div className="transaction-desc">{t.description}</div>
+                      <div className="transaction-date">{new Date(t.transaction_date).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                    </div>
+                  </div>
+
+                  <div className="transaction-amount-actions">
+                    <div className="transaction-amount" style={{ color: t.type === 'income' ? 'var(--success)' : 'var(--secondary)' }}>
+                      {t.type === 'income' ? '+' : '-'} {formatIDR(t.amount)}
+                    </div>
+                    <div className="transaction-actions">
+                      <button onClick={() => setEditingTransaction(t)} style={{ padding: '0.4rem', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--primary)', width: 'auto', borderRadius: '0.4rem' }}>
+                        <Pencil size={12} />
+                      </button>
+                      <button onClick={() => handleDelete(t.id)} style={{ padding: '0.4rem', background: 'rgba(236, 72, 153, 0.1)', color: 'var(--secondary)', width: 'auto', borderRadius: '0.4rem' }}>
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {transactions.length === 0 && !loading && (
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                  No transactions yet. Start by adding one above!
+                </div>
+              )}
             </div>
 
+            {/* Pagination */}
             {totalCount > itemsPerPage && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', padding: '0 1rem' }}>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              <div className="flex justify-between items-center mt-2 flex-wrap gap-2">
+                <p className="text-muted" style={{ fontSize: '0.85rem' }}>
                   Page {currentPage} of {Math.ceil(totalCount / itemsPerPage)}
                 </p>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <div className="flex gap-1">
                   <button 
                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
-                    style={{ padding: '0.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)' }}
+                    style={{ padding: '0.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', width: 'auto' }}
                   >
                     <ChevronLeft size={18} />
                   </button>
                   <button 
                     onClick={() => setCurrentPage(p => Math.min(Math.ceil(totalCount / itemsPerPage), p + 1))}
                     disabled={currentPage >= Math.ceil(totalCount / itemsPerPage)}
-                    style={{ padding: '0.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)' }}
+                    style={{ padding: '0.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', width: 'auto' }}
                   >
                     <ChevronRight size={18} />
                   </button>
@@ -385,21 +456,65 @@ function App() {
         </div>
       </div>
 
+      {/* Manual Entry Modal */}
+      {isManualEntryOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+          <div className="glass-panel fade-in" style={{ width: '100%', maxWidth: '400px', border: '1px solid var(--primary)' }}>
+            <div className="flex justify-between mb-2">
+              <h3 className="gradient-text">Manual Entry</h3>
+              <button 
+                onClick={() => setIsManualEntryOpen(false)} 
+                style={{ background: 'transparent', width: 'auto', padding: '0.25rem' }}
+              >
+                <X size={20} className="text-muted" />
+              </button>
+            </div>
+            <form onSubmit={handleSubmit} className="flex flex-col gap-2 w-full">
+              <div className="flex flex-col gap-1">
+                <label className="text-muted" style={{ fontSize: '0.85rem' }}>Transaction Type</label>
+                <select value={type} onChange={(e) => setType(e.target.value as 'income' | 'expense')}>
+                  <option value="income">Income</option>
+                  <option value="expense">Expense</option>
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-muted" style={{ fontSize: '0.85rem' }}>Amount (IDR)</label>
+                <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="100000" required />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-muted" style={{ fontSize: '0.85rem' }}>Description</label>
+                <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Salary, Rent, Food..." required />
+              </div>
+              <button type="submit" disabled={submitting} className="w-full mt-2">
+                {submitting ? <Loader2 className="animate-spin" size={18} /> : 'Save Transaction'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* AI Edit Modal */}
       {editingTransaction && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div className="glass-panel" style={{ width: '90%', maxWidth: '400px', border: '1px solid var(--primary)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+          <div className="glass-panel fade-in" style={{ width: '100%', maxWidth: '400px', border: '1px solid var(--primary)' }}>
+            <div className="flex justify-between mb-2">
               <h3 className="gradient-text">Edit via AI</h3>
-              <X onClick={() => setEditingTransaction(null)} style={{ cursor: 'pointer' }} />
+              <button 
+                onClick={() => setEditingTransaction(null)} 
+                style={{ background: 'transparent', width: 'auto', padding: '0.25rem' }}
+              >
+                <X size={20} className="text-muted" />
+              </button>
             </div>
             <textarea 
               value={aiEditPrompt} 
               onChange={(e) => setAiEditPrompt(e.target.value)} 
-              placeholder="What do you want to change?..." 
-              style={{ width: '100%', background: '#0f172a', border: '1px solid var(--border)', padding: '1rem', color: 'white', minHeight: '100px' }}
+              placeholder="Example: 'Change amount to 50k'..." 
+              style={{ minHeight: '120px' }}
             />
-            <button onClick={handleAiEdit} disabled={isAiEditing} style={{ width: '100%', marginTop: '1rem' }}>
-              {isAiEditing ? 'Processing...' : 'Update via AI'}
+            <button onClick={handleAiEdit} disabled={isAiEditing} className="w-full mt-2">
+              {isAiEditing ? <Loader2 className="animate-spin" size={20} /> : <Sparkles size={20} />}
+              Update via AI
             </button>
           </div>
         </div>
